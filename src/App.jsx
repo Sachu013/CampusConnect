@@ -7,7 +7,7 @@ import FeedView from './components/FeedView.jsx';
 import ChatView from './components/ChatView.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import DirectMessageView from './components/DirectMessageView.jsx';
-
+import Header from './components/Header.jsx';
 // Import Firebase SDKs
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -155,17 +155,4 @@ function LoadingSpinner() {
     );
 }
 
-function Header({ view, channelName, dmRecipientName }) {
-    const viewTitles = {
-        feed: 'News Feed',
-        chat: `# ${channelName}`,
-        profile: 'User Profile',
-        dm: `Message with ${dmRecipientName || '...'}`,
-    };
-    return (
-        <header className="bg-white dark:bg-gray-800 p-4 shadow-md border-b border-gray-200 dark:border-gray-700">
-            <h1 className="text-xl font-bold">{viewTitles[view]}</h1>
-        </header>
-    );
-}
 
