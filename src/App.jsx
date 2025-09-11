@@ -1,28 +1,19 @@
 import React, { useState, useEffect } from 'react';
 
-// Import our separate components and config using absolute paths from src
-import { auth, db } from '/src/firebaseConfig.js';
-import ProfileView from '/src/components/ProfileView.jsx';
-import FeedView from '/src/components/FeedView.jsx';
-import ChatView from '/src/components/ChatView.jsx';
-import Sidebar from '/src/components/Sidebar.jsx';
-import DirectMessageView from '/src/components/DirectMessageView.jsx';
+// Import our separate components and config
+import { auth, db, rtdb } from './firebaseConfig.js'; // UPDATED: import rtdb and db
+import ProfileView from './components/ProfileView.jsx';
+import FeedView from './components/FeedView.jsx';
+import ChatView from './components/ChatView.jsx';
+import Sidebar from './components/Sidebar.jsx';
+import DirectMessageView from './components/DirectMessageView.jsx';
 
-// Import functions from Firebase SDKs
-import {
-    onAuthStateChanged,
-    GoogleAuthProvider,
-    signInWithPopup,
-    signOut
-} from 'firebase/auth';
-import {
-    doc,
-    setDoc,
-    serverTimestamp,
-} from 'firebase/firestore';
+// Import Firebase SDKs
+import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, onValue, set, onDisconnect } from "firebase/database"; // NEW: Realtime DB imports
 import { LogIn } from 'lucide-react';
 
-// --- Main App Component ---
 export default function App() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -30,10 +21,13 @@ export default function App() {
     const [activeChannel, setActiveChannel] = useState({ id: 'general', name: 'General' });
     const [viewingProfileId, setViewingProfileId] = useState(null);
     const [activeDmRecipient, setActiveDmRecipient] = useState(null);
+    const [onlineStatus, setOnlineStatus] = useState({}); // NEW: State for online users
 
+    // Auth state listener (now with presence logic)
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (currentUser) {
+                // This part for Firestore is unchanged
                 const userRef = doc(db, "users", currentUser.uid);
                 await setDoc(userRef, {
                     uid: currentUser.uid,
@@ -42,6 +36,18 @@ export default function App() {
                     email: currentUser.email,
                     lastLogin: serverTimestamp()
                 }, { merge: true });
+
+                // --- NEW: Realtime Database Presence Logic ---
+                const userStatusRef = ref(rtdb, `/status/${currentUser.uid}`);
+                const isOnline = { state: 'online', last_changed: Date.now() };
+                const isOffline = { state: 'offline', last_changed: Date.now() };
+
+                // Set online status when user connects
+                set(userStatusRef, isOnline);
+
+                // Set offline status when user disconnects gracefully
+                onDisconnect(userStatusRef).set(isOffline);
+
                 setUser(currentUser);
             } else {
                 setUser(null);
@@ -51,6 +57,17 @@ export default function App() {
         return () => unsubscribe();
     }, []);
 
+    // --- NEW: Effect to listen for all users' online status ---
+    useEffect(() => {
+        const statusRef = ref(rtdb, '/status');
+        const unsubscribe = onValue(statusRef, (snapshot) => {
+            const statuses = snapshot.val() || {};
+            setOnlineStatus(statuses);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // All handler functions below are unchanged
     const handleViewProfile = (userId) => {
         setViewingProfileId(userId);
         setCurrentView('profile');
@@ -79,13 +96,8 @@ export default function App() {
         }
     };
 
-    if (loading) {
-        return <LoadingSpinner />;
-    }
-
-    if (!user) {
-        return <LoginScreen onLogin={handleLogin} />;
-    }
+    if (loading) return <LoadingSpinner />;
+    if (!user) return <LoginScreen onLogin={handleLogin} />;
 
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans">
@@ -97,6 +109,7 @@ export default function App() {
                 onSignOut={handleSignOut}
                 onViewProfile={handleViewProfile}
                 onStartDirectMessage={handleStartDirectMessage}
+                onlineStatus={onlineStatus} // NEW: Pass online status to sidebar
             />
             <main className="flex-1 flex flex-col">
                 <Header 
@@ -115,7 +128,7 @@ export default function App() {
     );
 }
 
-// --- Smaller components can still live here for now ---
+// --- Smaller components (LoginScreen, LoadingSpinner, Header) are unchanged ---
 function LoginScreen({ onLogin }) {
     return (
         <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white">
@@ -133,6 +146,7 @@ function LoginScreen({ onLogin }) {
         </div>
     );
 }
+
 function LoadingSpinner() {
     return (
         <div className="flex h-screen items-center justify-center bg-gray-900">

@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { db } from '../firebaseConfig.js'; // Use relative path
+import React, { useState, useEffect } from 'react'; // Corrected import statement
+import { db } from '../firebaseConfig.js';
 import { collection, query, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { User, MessageSquare, Newspaper, LogOut, PlusSquare, X } from 'lucide-react';
 
-export default function Sidebar({ user, setCurrentView, currentView, setActiveChannel, onSignOut, onViewProfile, onStartDirectMessage }) {
+// The Sidebar now receives the `onlineStatus` object as a prop
+export default function Sidebar({ user, setCurrentView, currentView, setActiveChannel, onSignOut, onViewProfile, onStartDirectMessage, onlineStatus }) {
     const [channels, setChannels] = useState([]);
     const [connections, setConnections] = useState([]);
     const [isCreatingChannel, setIsCreatingChannel] = useState(false);
 
-    // Effect to fetch channels
+    // This useEffect for fetching channels is unchanged
     useEffect(() => {
         const q = query(collection(db, "channels"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -19,7 +20,7 @@ export default function Sidebar({ user, setCurrentView, currentView, setActiveCh
         return () => unsubscribe();
     }, []);
 
-    // Effect to fetch connections for DM list
+    // This useEffect for fetching connections is unchanged
     useEffect(() => {
         if (!user) return;
         const q = query(collection(db, "users", user.uid, "connections"));
@@ -30,6 +31,7 @@ export default function Sidebar({ user, setCurrentView, currentView, setActiveCh
         return () => unsubscribe();
     }, [user]);
 
+    // The handleCreateChannel function is unchanged
     const handleCreateChannel = async (channelName) => {
         if (channelName.trim() === '') return;
         try {
@@ -49,12 +51,12 @@ export default function Sidebar({ user, setCurrentView, currentView, setActiveCh
             <aside className="w-64 bg-gray-800 text-white flex flex-col p-4">
                 <div className="text-2xl font-bold text-center py-4 mb-4 border-b border-gray-700">CampusConnect</div>
                 <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                    {/* The nav and channels sections are unchanged */}
                     <nav className="space-y-2">
                         <button onClick={() => setCurrentView('feed')} className={`flex items-center w-full text-left p-3 rounded-lg transition-colors ${currentView === 'feed' ? 'bg-purple-600 text-white' : 'hover:bg-gray-700'}`}><Newspaper size={20} /><span className="ml-3 font-medium">Feed</span></button>
                         <button onClick={() => onViewProfile(user.uid)} className={`flex items-center w-full text-left p-3 rounded-lg transition-colors ${currentView === 'profile' ? 'bg-purple-600 text-white' : 'hover:bg-gray-700'}`}><User size={20} /><span className="ml-3 font-medium">Profile</span></button>
                     </nav>
-
-                    <div className="pt-4 mt-4 border-t border-gray-700">
+                     <div className="pt-4 mt-4 border-t border-gray-700">
                          <div className="flex justify-between items-center px-3 mb-2">
                             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Channels</h3>
                             <button onClick={() => setIsCreatingChannel(true)} className="text-gray-400 hover:text-white">
@@ -71,19 +73,31 @@ export default function Sidebar({ user, setCurrentView, currentView, setActiveCh
                         </div>
                     </div>
 
+                    {/* --- UPDATED: Direct Messages Section --- */}
                     <div className="pt-4 mt-4 border-t border-gray-700">
                         <h3 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Direct Messages</h3>
                         <div className="space-y-1">
-                            {connections.map(connection => (
-                                <button key={connection.id} onClick={() => onStartDirectMessage(connection)} className="w-full text-left px-3 py-2 text-sm rounded-md text-gray-300 hover:bg-gray-700 hover:text-white flex items-center" >
-                                    <img src={connection.photoURL} alt={connection.displayName} className="w-6 h-6 rounded-full mr-2" />
-                                    <span className="truncate">{connection.displayName}</span>
-                                </button>
-                            ))}
+                            {connections.map(connection => {
+                                // Check if the current connection's ID is in our onlineStatus list
+                                const isOnline = onlineStatus[connection.id]?.state === 'online';
+                                return (
+                                    <button key={connection.id} onClick={() => onStartDirectMessage(connection)} className="w-full text-left px-3 py-2 text-sm rounded-md text-gray-300 hover:bg-gray-700 hover:text-white flex items-center" >
+                                        <div className="relative">
+                                            <img src={connection.photoURL} alt={connection.displayName} className="w-6 h-6 rounded-full mr-2" />
+                                            {/* Conditionally render the green dot */}
+                                            {isOnline && (
+                                                <div className="absolute bottom-0 right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-800"></div>
+                                            )}
+                                        </div>
+                                        <span className="truncate">{connection.displayName}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
 
+                {/* The user profile/sign out section is unchanged */}
                 <div className="mt-auto flex items-center p-3 bg-gray-900 rounded-lg">
                     <img src={user.photoURL} alt="User" className="w-10 h-10 rounded-full" />
                     <div className="ml-3 flex-1">
@@ -102,6 +116,7 @@ export default function Sidebar({ user, setCurrentView, currentView, setActiveCh
     );
 }
 
+// The CreateChannelModal component is unchanged
 function CreateChannelModal({ onCreate, onClose }) {
     const [channelName, setChannelName] = useState('');
 
