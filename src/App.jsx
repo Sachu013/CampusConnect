@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
-// Import our separate components and config with explicit extensions
-import { auth, db } from './firebaseConfig.js';
-import ProfileView from './components/ProfileView.jsx';
-import FeedView from './components/FeedView.jsx';
-import ChatView from './components/ChatView.jsx';
+// Import our separate components and config using absolute paths from src
+import { auth, db } from '/src/firebaseConfig.js';
+import ProfileView from '/src/components/ProfileView.jsx';
+import FeedView from '/src/components/FeedView.jsx';
+import ChatView from '/src/components/ChatView.jsx';
+import Sidebar from '/src/components/Sidebar.jsx';
+import DirectMessageView from '/src/components/DirectMessageView.jsx';
 
 // Import functions from Firebase SDKs
 import {
@@ -18,7 +20,7 @@ import {
     setDoc,
     serverTimestamp,
 } from 'firebase/firestore';
-import { User, MessageSquare, Newspaper, LogOut, LogIn } from 'lucide-react';
+import { LogIn } from 'lucide-react';
 
 // --- Main App Component ---
 export default function App() {
@@ -27,6 +29,7 @@ export default function App() {
     const [currentView, setCurrentView] = useState('feed');
     const [activeChannel, setActiveChannel] = useState({ id: 'general', name: 'General' });
     const [viewingProfileId, setViewingProfileId] = useState(null);
+    const [activeDmRecipient, setActiveDmRecipient] = useState(null);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -51,6 +54,11 @@ export default function App() {
     const handleViewProfile = (userId) => {
         setViewingProfileId(userId);
         setCurrentView('profile');
+    };
+    
+    const handleStartDirectMessage = (recipient) => {
+        setActiveDmRecipient(recipient);
+        setCurrentView('dm');
     };
 
     const handleLogin = async () => {
@@ -88,13 +96,19 @@ export default function App() {
                 setActiveChannel={setActiveChannel}
                 onSignOut={handleSignOut}
                 onViewProfile={handleViewProfile}
+                onStartDirectMessage={handleStartDirectMessage}
             />
             <main className="flex-1 flex flex-col">
-                <Header view={currentView} channelName={activeChannel.name} />
+                <Header 
+                    view={currentView} 
+                    channelName={activeChannel.name}
+                    dmRecipientName={activeDmRecipient?.displayName}
+                />
                 <div className="flex-1 overflow-y-auto p-4 md:p-6">
                     {currentView === 'feed' && <FeedView user={user} onViewProfile={handleViewProfile} />}
                     {currentView === 'chat' && <ChatView user={user} channelId={activeChannel.id} />}
                     {currentView === 'profile' && <ProfileView loggedInUser={user} profileUserId={viewingProfileId || user.uid} />}
+                    {currentView === 'dm' && <DirectMessageView user={user} recipient={activeDmRecipient} />}
                 </div>
             </main>
         </div>
@@ -102,7 +116,6 @@ export default function App() {
 }
 
 // --- Smaller components can still live here for now ---
-
 function LoginScreen({ onLogin }) {
     return (
         <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white">
@@ -120,7 +133,6 @@ function LoginScreen({ onLogin }) {
         </div>
     );
 }
-
 function LoadingSpinner() {
     return (
         <div className="flex h-screen items-center justify-center bg-gray-900">
@@ -129,51 +141,12 @@ function LoadingSpinner() {
     );
 }
 
-function Sidebar({ user, setCurrentView, currentView, setActiveChannel, onSignOut, onViewProfile }) {
-    const channels = [
-        { id: 'general', name: 'General' },
-        { id: 'study-group', name: 'Study Group' },
-        { id: 'project-collaboration', name: 'Project Collab' },
-    ];
-
-    return (
-        <aside className="w-64 bg-gray-800 text-white flex flex-col p-4 space-y-2">
-            <div className="text-2xl font-bold text-center py-4 mb-4 border-b border-gray-700">CampusConnect</div>
-            <nav className="flex-1 space-y-2">
-                 <button onClick={() => setCurrentView('feed')} className={`flex items-center w-full text-left p-3 rounded-lg transition-colors ${currentView === 'feed' ? 'bg-purple-600 text-white' : 'hover:bg-gray-700'}`}><Newspaper size={20} /><span className="ml-3 font-medium">Feed</span></button>
-                 <button onClick={() => { setCurrentView('chat'); setActiveChannel({id: 'general', name: 'General'})}} className={`flex items-center w-full text-left p-3 rounded-lg transition-colors ${currentView === 'chat' ? 'bg-purple-600 text-white' : 'hover:bg-gray-700'}`}><MessageSquare size={20} /><span className="ml-3 font-medium">Chat</span></button>
-                 <button onClick={() => onViewProfile(user.uid)} className={`flex items-center w-full text-left p-3 rounded-lg transition-colors ${currentView === 'profile' ? 'bg-purple-600 text-white' : 'hover:bg-gray-700'}`}><User size={20} /><span className="ml-3 font-medium">Profile</span></button>
-
-                <div className="pt-4 mt-4 border-t border-gray-700">
-                    <h3 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Channels</h3>
-                    <div className="space-y-1">
-                    {channels.map(channel => (
-                        <button key={channel.id} onClick={() => { setActiveChannel(channel); setCurrentView('chat'); }} className="w-full text-left px-3 py-2 text-sm rounded-md text-gray-300 hover:bg-gray-700 hover:text-white" >
-                            # {channel.name}
-                        </button>
-                    ))}
-                    </div>
-                </div>
-            </nav>
-            <div className="mt-auto flex items-center p-3 bg-gray-900 rounded-lg">
-                <img src={user.photoURL} alt="User" className="w-10 h-10 rounded-full" />
-                <div className="ml-3 flex-1">
-                    <p className="font-semibold text-sm">{user.displayName}</p>
-                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
-                </div>
-                 <button onClick={onSignOut} className="ml-2 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full transition-colors">
-                    <LogOut size={18} />
-                </button>
-            </div>
-        </aside>
-    );
-}
-
-function Header({ view, channelName }) {
+function Header({ view, channelName, dmRecipientName }) {
     const viewTitles = {
         feed: 'News Feed',
         chat: `# ${channelName}`,
-        profile: 'User Profile'
+        profile: 'User Profile',
+        dm: `Message with ${dmRecipientName || '...'}`,
     };
     return (
         <header className="bg-white dark:bg-gray-800 p-4 shadow-md border-b border-gray-200 dark:border-gray-700">
