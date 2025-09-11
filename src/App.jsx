@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
-// Import our separate components and config using absolute paths
-import { auth, db } from '/src/firebaseConfig.js';
-import ProfileView from '/src/components/ProfileView.jsx';
-import FeedView from '/src/components/FeedView.jsx';
-import ChatView from '/src/components/ChatView.jsx'; 
+// Import our separate components and config with explicit extensions
+import { auth, db } from './firebaseConfig.js';
+import ProfileView from './components/ProfileView.jsx';
+import FeedView from './components/FeedView.jsx';
+import ChatView from './components/ChatView.jsx';
 
 // Import functions from Firebase SDKs
 import {
@@ -28,7 +28,6 @@ export default function App() {
     const [activeChannel, setActiveChannel] = useState({ id: 'general', name: 'General' });
     const [viewingProfileId, setViewingProfileId] = useState(null);
 
-    // Effect to handle user authentication state
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (currentUser) {
@@ -102,7 +101,8 @@ export default function App() {
     );
 }
 
-// --- Components that still live in App.jsx ---
+// --- Smaller components can still live here for now ---
+
 function LoginScreen({ onLogin }) {
     return (
         <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white">
