@@ -67,7 +67,7 @@ export default function App() {
         return () => unsubscribe();
     }, []);
 
-    // All handler functions below are unchanged
+
     const handleViewProfile = (userId) => {
         setViewingProfileId(userId);
         setCurrentView('profile');
