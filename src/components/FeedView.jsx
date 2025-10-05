@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { db, storage } from '../firebaseConfig.js'; // Using relative path
+import { db, storage } from '../firebaseConfig'; // Corrected import
 import { collection, query, onSnapshot, serverTimestamp, addDoc, doc, updateDoc, arrayUnion, arrayRemove, orderBy, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { Image as ImageIcon, X } from 'lucide-react';
-import PostItem from './PostItem.jsx'; // --- NEW: Import the standalone PostItem component ---
+import { Heart, MessageCircle, Send, Image as ImageIcon, X, Trash2 } from 'lucide-react';
+import PostItem from './PostItem'; // Corrected import
 
-// createNotification helper function is unchanged
+// Helper function to create notifications
 const createNotification = async (recipientId, sender, message) => {
     if (recipientId === sender.uid) return;
     const notificationsRef = collection(db, 'users', recipientId, 'notifications');
@@ -25,16 +25,15 @@ export default function FeedView({ user, onViewProfile }) {
     const [imageFile, setImageFile] = useState(null);
     const [uploading, setUploading] = useState(false);
 
-    // This useEffect is unchanged
     useEffect(() => {
         const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            setPosts(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            const postsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setPosts(postsData);
         });
         return () => unsubscribe();
     }, []);
 
-    // All handler functions are unchanged
     const handlePost = async (e) => {
         e.preventDefault();
         if (newPost.trim() === '' && !imageFile) return;
@@ -49,11 +48,17 @@ export default function FeedView({ user, onViewProfile }) {
         }
         try {
             await addDoc(collection(db, "posts"), {
-                content: newPost, imageUrl, imagePath,
-                authorId: user.uid, authorName: user.displayName, authorPhotoURL: user.photoURL,
-                createdAt: serverTimestamp(), likes: [],
+                content: newPost,
+                imageUrl: imageUrl,
+                imagePath: imagePath,
+                authorId: user.uid,
+                authorName: user.displayName,
+                authorPhotoURL: user.photoURL,
+                createdAt: serverTimestamp(),
+                likes: [],
             });
-            setNewPost(''); setImageFile(null);
+            setNewPost('');
+            setImageFile(null);
         } catch (error) {
             console.error("Error adding post: ", error);
         } finally {
@@ -76,14 +81,17 @@ export default function FeedView({ user, onViewProfile }) {
         if (commentText.trim() === '') return;
         const commentsRef = collection(db, 'posts', postId, 'comments');
         await addDoc(commentsRef, {
-            text: commentText, authorId: user.uid, authorName: user.displayName,
-            authorPhotoURL: user.photoURL, createdAt: serverTimestamp(),
+            text: commentText,
+            authorId: user.uid,
+            authorName: user.displayName,
+            authorPhotoURL: user.photoURL,
+            createdAt: serverTimestamp(),
         });
         await createNotification(postAuthorId, user, "commented on your post.");
     };
-    
+
     const handleDeletePost = async (post) => {
-        if (confirm("Are you sure you want to delete this post?")) {
+        if (window.confirm("Are you sure you want to delete this post?")) {
             try {
                 await deleteDoc(doc(db, 'posts', post.id));
                 if (post.imagePath) {
@@ -98,7 +106,6 @@ export default function FeedView({ user, onViewProfile }) {
 
     return (
         <div className="max-w-3xl mx-auto">
-            {/* New Post form is unchanged */}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6">
                 <form onSubmit={handlePost}>
                     <textarea value={newPost} onChange={(e) => setNewPost(e.target.value)} placeholder="Share an achievement or ask a question..." className="w-full p-2 bg-gray-100 dark:bg-gray-700 rounded-lg border-2 border-transparent focus:outline-none focus:border-purple-500 resize-none" rows="2"></textarea>
@@ -111,7 +118,6 @@ export default function FeedView({ user, onViewProfile }) {
             </div>
             
             <div className="space-y-4">
-                {/* Now we map over posts and render the imported PostItem component */}
                 {posts.map(post => (
                     <PostItem 
                         key={post.id} 

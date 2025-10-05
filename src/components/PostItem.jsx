@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebaseConfig.js'; // Using absolute path from src
+import { db } from '../firebaseConfig.js'; // Using relative path
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { Heart, MessageCircle, Send, Trash2 } from 'lucide-react';
 

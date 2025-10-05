@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from '../firebaseConfig.js'; // Use absolute path
+import { db } from '../firebaseConfig.js'; // Corrected to relative path
 import { collection, query, onSnapshot, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { Send } from 'lucide-react';
 
@@ -54,6 +54,14 @@ export default function DirectMessageView({ user, recipient }) {
         });
         setNewMessage('');
     };
+
+    if (!recipient) {
+        return (
+            <div className="flex items-center justify-center h-full text-gray-500">
+                Select a connection to start messaging.
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-full max-w-4xl mx-auto">

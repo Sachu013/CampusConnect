@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
-// Using relative paths for all imports
-import { auth, db, rtdb } from './firebaseConfig.js';
-import ProfileView from './components/ProfileView.jsx';
-import FeedView from './components/FeedView.jsx';
-import ChatView from './components/ChatView.jsx';
-import Sidebar from './components/Sidebar.jsx';
-import DirectMessageView from './components/DirectMessageView.jsx';
-import Header from './components/Header.jsx'; 
+// Using the new '@' alias for clean, reliable imports
+import { auth, db, rtdb } from '@/firebaseConfig.js';
+import ProfileView from '@/components/ProfileView.jsx';
+import FeedView from '@/components/FeedView.jsx';
+import ChatView from '@/components/ChatView.jsx';
+import Sidebar from '@/components/Sidebar.jsx';
+import DirectMessageView from '@/components/DirectMessageView.jsx';
+import Header from '@/components/Header.jsx'; 
 
+// Import Firebase SDKs
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, onValue, set, onDisconnect } from "firebase/database";

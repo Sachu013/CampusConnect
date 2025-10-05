@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebaseConfig.js';
+import { db } from '../firebaseConfig.js'; // Corrected to relative path
 import { collection, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
-import { Bell, BellRing } from 'lucide-react';
+import { Bell, BellRing, X } from 'lucide-react';
 
 // A helper function to format time since the notification
 const timeSince = (date) => {

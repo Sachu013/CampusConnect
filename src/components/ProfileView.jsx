@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { db, storage } from '../firebaseConfig.js'; // Using absolute path
+import { db, storage } from '../firebaseConfig.js'; // Corrected to relative path
 import { collection, query, where, orderBy, onSnapshot, doc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { Edit, X, UserPlus, CheckCircle, UserX } from 'lucide-react';
-import PostItem from './PostItem.jsx'; // Using absolute path
+import PostItem from './PostItem.jsx'; // Corrected to relative path
 
 // createNotification helper function
 const createNotification = async (recipientId, sender, message) => {
@@ -59,7 +59,7 @@ export default function ProfileView({ loggedInUser, profileUserId, onViewProfile
         return () => unsubscribe();
     }, [profileUserId]);
 
-    // Handler functions to be passed down to PostItem
+    // --- All handler functions are needed here to pass to PostItem ---
     const handleConnect = async () => {
         if (!profileData) return;
         const myConnectionRef = doc(db, "users", loggedInUser.uid, "connections", profileUserId);
@@ -97,7 +97,10 @@ export default function ProfileView({ loggedInUser, profileUserId, onViewProfile
     const handleComment = async (postId, postAuthorId, commentText) => {
         if (commentText.trim() === '') return;
         const commentsRef = collection(db, 'posts', postId, 'comments');
-        await addDoc(commentsRef, { text: commentText, authorId: loggedInUser.uid, authorName: loggedInUser.displayName, authorPhotoURL: loggedInUser.photoURL, createdAt: serverTimestamp() });
+        await addDoc(commentsRef, {
+            text: commentText, authorId: loggedInUser.uid, authorName: loggedInUser.displayName,
+            authorPhotoURL: loggedInUser.photoURL, createdAt: serverTimestamp(),
+        });
         await createNotification(postAuthorId, loggedInUser, "commented on your post.");
     };
 
@@ -112,7 +115,7 @@ export default function ProfileView({ loggedInUser, profileUserId, onViewProfile
             } catch (error) { console.error("Error deleting post: ", error); }
         }
     };
-
+    
     if (isLoading) return <div className="text-center p-10">Loading profile...</div>;
     if (!profileData) return <div className="text-center p-10">Could not load profile.</div>;
     
@@ -140,12 +143,20 @@ export default function ProfileView({ loggedInUser, profileUserId, onViewProfile
                 {userPosts.length > 0 ? (
                     userPosts.map(post => (
                         <PostItem 
-                            key={post.id} post={post} user={loggedInUser}
-                            onViewProfile={onViewProfile} onLike={handleLike}
-                            onComment={handleComment} onDelete={handleDeletePost}
+                            key={post.id}
+                            post={post}
+                            user={loggedInUser}
+                            onViewProfile={onViewProfile}
+                            onLike={handleLike}
+                            onComment={handleComment}
+                            onDelete={handleDeletePost}
                         />
                     ))
-                ) : ( <div className="bg-white dark:bg-gray-800 p-6 rounded-lg text-center text-gray-500">This user hasn't posted anything yet.</div> )}
+                ) : (
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg text-center text-gray-500">
+                        This user hasn't posted anything yet.
+                    </div>
+                )}
             </div>
 
             {isEditing && <EditProfileModal userProfile={profileData} onSave={handleSaveProfile} onClose={() => setIsEditing(false)} />}
