@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 
-// Import our separate components and config
-import { auth, db, rtdb } from './firebaseConfig.js'; // UPDATED: import rtdb and db
+// Import our separate components and config using relative paths
+import { auth, db, rtdb } from './firebaseConfig.js';
 import ProfileView from './components/ProfileView.jsx';
 import FeedView from './components/FeedView.jsx';
 import ChatView from './components/ChatView.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import DirectMessageView from './components/DirectMessageView.jsx';
-import Header from './components/Header.jsx';
+import Header from './components/Header.jsx'; 
+
 // Import Firebase SDKs
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, onValue, set, onDisconnect } from "firebase/database"; // NEW: Realtime DB imports
+import { ref, onValue, set, onDisconnect } from "firebase/database";
 import { LogIn } from 'lucide-react';
 
 export default function App() {
@@ -21,13 +22,12 @@ export default function App() {
     const [activeChannel, setActiveChannel] = useState({ id: 'general', name: 'General' });
     const [viewingProfileId, setViewingProfileId] = useState(null);
     const [activeDmRecipient, setActiveDmRecipient] = useState(null);
-    const [onlineStatus, setOnlineStatus] = useState({}); // NEW: State for online users
+    const [onlineStatus, setOnlineStatus] = useState({});
 
-    // Auth state listener (now with presence logic)
+    // All useEffect hooks and handler functions remain the same...
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (currentUser) {
-                // This part for Firestore is unchanged
                 const userRef = doc(db, "users", currentUser.uid);
                 await setDoc(userRef, {
                     uid: currentUser.uid,
@@ -37,15 +37,10 @@ export default function App() {
                     lastLogin: serverTimestamp()
                 }, { merge: true });
 
-                // --- NEW: Realtime Database Presence Logic ---
                 const userStatusRef = ref(rtdb, `/status/${currentUser.uid}`);
                 const isOnline = { state: 'online', last_changed: Date.now() };
                 const isOffline = { state: 'offline', last_changed: Date.now() };
-
-                // Set online status when user connects
                 set(userStatusRef, isOnline);
-
-                // Set offline status when user disconnects gracefully
                 onDisconnect(userStatusRef).set(isOffline);
 
                 setUser(currentUser);
@@ -57,16 +52,13 @@ export default function App() {
         return () => unsubscribe();
     }, []);
 
-    // --- NEW: Effect to listen for all users' online status ---
     useEffect(() => {
         const statusRef = ref(rtdb, '/status');
         const unsubscribe = onValue(statusRef, (snapshot) => {
-            const statuses = snapshot.val() || {};
-            setOnlineStatus(statuses);
+            setOnlineStatus(snapshot.val() || {});
         });
         return () => unsubscribe();
     }, []);
-
 
     const handleViewProfile = (userId) => {
         setViewingProfileId(userId);
@@ -80,15 +72,17 @@ export default function App() {
 
     const handleLogin = async () => {
         const provider = new GoogleAuthProvider();
-        try {
-            await signInWithPopup(auth, provider);
-        } catch (error) {
-            console.error("Error during Google sign-in", error);
-        }
+        try { await signInWithPopup(auth, provider); }
+        catch (error) { console.error("Error during Google sign-in", error); }
     };
 
     const handleSignOut = async () => {
         try {
+            // Set user status to offline immediately on sign out
+            if (user) {
+                 const userStatusRef = ref(rtdb, `/status/${user.uid}`);
+                 set(userStatusRef, { state: 'offline', last_changed: Date.now() });
+            }
             await signOut(auth);
             setCurrentView('feed');
         } catch (error) {
@@ -109,10 +103,11 @@ export default function App() {
                 onSignOut={handleSignOut}
                 onViewProfile={handleViewProfile}
                 onStartDirectMessage={handleStartDirectMessage}
-                onlineStatus={onlineStatus} // NEW: Pass online status to sidebar
+                onlineStatus={onlineStatus}
             />
             <main className="flex-1 flex flex-col">
                 <Header 
+                    user={user} 
                     view={currentView} 
                     channelName={activeChannel.name}
                     dmRecipientName={activeDmRecipient?.displayName}
@@ -128,7 +123,7 @@ export default function App() {
     );
 }
 
-// --- Smaller components (LoginScreen, LoadingSpinner, Header) are unchanged ---
+// --- LoginScreen and LoadingSpinner are unchanged ---
 function LoginScreen({ onLogin }) {
     return (
         <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white">
@@ -154,5 +149,4 @@ function LoadingSpinner() {
         </div>
     );
 }
-
 
