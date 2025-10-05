@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from '/src/firebaseConfig.js'; // Using absolute path
+import { db } from '../firebaseConfig.js'; // Using absolute path
 import {
     collection,
     addDoc,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// Import our separate components and config using relative paths
+// Using relative paths for all imports
 import { auth, db, rtdb } from './firebaseConfig.js';
 import ProfileView from './components/ProfileView.jsx';
 import FeedView from './components/FeedView.jsx';
@@ -9,7 +9,6 @@ import Sidebar from './components/Sidebar.jsx';
 import DirectMessageView from './components/DirectMessageView.jsx';
 import Header from './components/Header.jsx'; 
 
-// Import Firebase SDKs
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, onValue, set, onDisconnect } from "firebase/database";
@@ -24,7 +23,6 @@ export default function App() {
     const [activeDmRecipient, setActiveDmRecipient] = useState(null);
     const [onlineStatus, setOnlineStatus] = useState({});
 
-    // All useEffect hooks and handler functions remain the same...
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (currentUser) {
@@ -42,7 +40,6 @@ export default function App() {
                 const isOffline = { state: 'offline', last_changed: Date.now() };
                 set(userStatusRef, isOnline);
                 onDisconnect(userStatusRef).set(isOffline);
-
                 setUser(currentUser);
             } else {
                 setUser(null);
@@ -78,7 +75,6 @@ export default function App() {
 
     const handleSignOut = async () => {
         try {
-            // Set user status to offline immediately on sign out
             if (user) {
                  const userStatusRef = ref(rtdb, `/status/${user.uid}`);
                  set(userStatusRef, { state: 'offline', last_changed: Date.now() });
@@ -115,7 +111,7 @@ export default function App() {
                 <div className="flex-1 overflow-y-auto p-4 md:p-6">
                     {currentView === 'feed' && <FeedView user={user} onViewProfile={handleViewProfile} />}
                     {currentView === 'chat' && <ChatView user={user} channelId={activeChannel.id} />}
-                    {currentView === 'profile' && <ProfileView loggedInUser={user} profileUserId={viewingProfileId || user.uid} />}
+                    {currentView === 'profile' && <ProfileView loggedInUser={user} profileUserId={viewingProfileId || user.uid} onViewProfile={handleViewProfile} />}
                     {currentView === 'dm' && <DirectMessageView user={user} recipient={activeDmRecipient} />}
                 </div>
             </main>
@@ -123,30 +119,11 @@ export default function App() {
     );
 }
 
-// --- LoginScreen and LoadingSpinner are unchanged ---
 function LoginScreen({ onLogin }) {
-    return (
-        <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white">
-            <div className="text-center p-8">
-                <h1 className="text-5xl font-bold mb-2">Welcome to CampusConnect</h1>
-                <p className="text-lg text-gray-400 mb-8">Your college community hub.</p>
-                <button
-                    onClick={onLogin}
-                    className="flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105"
-                >
-                    <LogIn className="mr-3" size={24} />
-                    Sign In with Google
-                </button>
-            </div>
-        </div>
-    );
+    return ( <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white"> <div className="text-center p-8"> <h1 className="text-5xl font-bold mb-2">Welcome to CampusConnect</h1> <p className="text-lg text-gray-400 mb-8">Your college community hub.</p> <button onClick={onLogin} className="flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg text-lg transition-transform transform hover:scale-105"> <LogIn className="mr-3" size={24} /> Sign In with Google </button> </div> </div> );
 }
 
 function LoadingSpinner() {
-    return (
-        <div className="flex h-screen items-center justify-center bg-gray-900">
-            <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-purple-500"></div>
-        </div>
-    );
+    return ( <div className="flex h-screen items-center justify-center bg-gray-900"> <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-purple-500"></div> </div> );
 }
 

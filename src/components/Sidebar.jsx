@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // Corrected import statement
+import React, { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig.js';
 import { collection, query, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { User, MessageSquare, Newspaper, LogOut, PlusSquare, X } from 'lucide-react';

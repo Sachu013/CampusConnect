@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from '/src/firebaseConfig.js'; // Use absolute path
+import { db } from '../firebaseConfig.js'; // Use absolute path
 import { collection, query, onSnapshot, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { Send } from 'lucide-react';
 
