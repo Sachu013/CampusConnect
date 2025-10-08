@@ -1,0 +1,44 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Posts images - all authenticated users can read, only authors can write
+    match /posts/{userId}/{imageId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Direct Message images - only conversation participants can access
+    match /directMessages/{dmId}/{imageId} {
+      // Allow access only if user is part of the DM conversation
+      // dmId format: "userId1_userId2" where userIds are sorted alphabetically
+      allow read, write: if request.auth != null && 
+                        (dmId.matches('.*' + request.auth.uid + '_.*') ||
+                         dmId.matches('.*_' + request.auth.uid + '_.*') ||
+                         dmId.matches('.*_' + request.auth.uid));
+    }
+    
+    // Group images - only group members can access
+    match /groups/{groupId}/images/{imageId} {
+      allow read, write: if request.auth != null && 
+                        request.auth.uid in firestore.get(/databases/(default)/documents/groups/$(groupId)).data.members;
+      allow delete: if request.auth != null && 
+                   (request.auth.uid == resource.metadata.customMetadata.uploadedBy ||
+                    request.auth.uid == firestore.get(/databases/(default)/documents/groups/$(groupId)).data.createdBy);
+    }
+    
+    // User profile images (if you decide to add this feature)
+    match /users/{userId}/profile/{imageId} {
+      allow read: if request.auth != null;
+      allow write, delete: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Temporary uploads (for processing before moving to final location)
+    match /temp/{userId}/{imageId} {
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+      // Auto-delete temp files after 1 day
+      allow delete: if request.time > resource.timeCreated + duration.value(1, 'd');
+    }
+  }
+}

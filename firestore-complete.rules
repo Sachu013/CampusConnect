@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users collection - readable by all, writable by owner
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      
+      // User subcollections
+      match /connections/{connectionId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      match /notifications/{notificationId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      match /sharedPosts/{sharedPostId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Posts collection - readable by all authenticated users
+    match /posts/{postId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && request.auth.uid == resource.data.authorId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+      
+      // Comments subcollection
+      match /comments/{commentId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null;
+        allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+      }
+    }
+    
+    // Direct Messages collection - flexible matching
+    match /directMessages/{dmId} {
+      allow read, write: if request.auth != null && 
+                        (dmId.split('_')[0] == request.auth.uid || 
+                         dmId.split('_')[1] == request.auth.uid);
+      
+      match /messages/{messageId} {
+        allow read: if request.auth != null && 
+                   (dmId.split('_')[0] == request.auth.uid || 
+                    dmId.split('_')[1] == request.auth.uid);
+        allow create: if request.auth != null && 
+                     (dmId.split('_')[0] == request.auth.uid || 
+                      dmId.split('_')[1] == request.auth.uid);
+        allow update, delete: if request.auth != null && 
+                              (request.auth.uid == resource.data.uid || 
+                               request.auth.uid == resource.data.senderId);
+      }
+    }
+    
+    // Groups collection
+    match /groups/{groupId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
+      
+      match /messages/{messageId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null;
+        allow update, delete: if request.auth != null;
+      }
+    }
+    
+    // Channels collection (if needed for backward compatibility)
+    match /channels/{channelId} {
+      allow read, write: if request.auth != null;
+      
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+    
+    // Any other collections
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db, storage } from '../firebaseConfig'; // Corrected import
 import { collection, query, onSnapshot, serverTimestamp, addDoc, doc, updateDoc, arrayUnion, arrayRemove, orderBy, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { Heart, MessageCircle, Send, Image as ImageIcon, X, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Send, Image as ImageIcon, X, Trash2, AlertTriangle } from 'lucide-react';
 import PostItem from './PostItem'; // Corrected import
 
 // Helper function to create notifications
@@ -24,6 +24,8 @@ export default function FeedView({ user, onViewProfile }) {
     const [newPost, setNewPost] = useState('');
     const [imageFile, setImageFile] = useState(null);
     const [uploading, setUploading] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [postToDelete, setPostToDelete] = useState(null);
 
     useEffect(() => {
         const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
@@ -90,17 +92,63 @@ export default function FeedView({ user, onViewProfile }) {
         await createNotification(postAuthorId, user, "commented on your post.");
     };
 
-    const handleDeletePost = async (post) => {
-        if (window.confirm("Are you sure you want to delete this post?")) {
-            try {
-                await deleteDoc(doc(db, 'posts', post.id));
-                if (post.imagePath) {
-                    const imageRef = ref(storage, post.imagePath);
-                    await deleteObject(imageRef);
-                }
-            } catch (error) {
-                console.error("Error deleting post: ", error);
+    const handleDeletePost = (post) => {
+        setPostToDelete(post);
+        setShowDeleteConfirm(true);
+    };
+
+    const confirmDeletePost = async () => {
+        if (!postToDelete) return;
+        try {
+            await deleteDoc(doc(db, 'posts', postToDelete.id));
+            if (postToDelete.imagePath) {
+                const imageRef = ref(storage, postToDelete.imagePath);
+                await deleteObject(imageRef);
             }
+        } catch (error) {
+            console.error("Error deleting post: ", error);
+        }
+        setShowDeleteConfirm(false);
+        setPostToDelete(null);
+    };
+
+    const handleSharePost = async (post, recipientId) => {
+        try {
+            // Create DM conversation ID (consistent ordering)
+            const dmId = [user.uid, recipientId].sort().join('_');
+            
+            // Create message in DM conversation
+            const messagesRef = collection(db, 'directMessages', dmId, 'messages');
+            await addDoc(messagesRef, {
+                text: `Shared a post: "${post.content.substring(0, 100)}${post.content.length > 100 ? '...' : ''}"`
+                    + (post.imageUrl ? ' [Image attached]' : ''),
+                sharedPost: {
+                    id: post.id,
+                    content: post.content,
+                    imageUrl: post.imageUrl,
+                    authorName: post.authorName,
+                    authorPhotoURL: post.authorPhotoURL,
+                    authorId: post.authorId,
+                    createdAt: post.createdAt,
+                    likes: post.likes
+                },
+                createdAt: serverTimestamp(),
+                uid: user.uid,
+                displayName: user.displayName,
+                photoURL: user.photoURL,
+                type: 'shared_post'
+            });
+            
+            // Also create a notification
+            await createNotification(
+                recipientId, 
+                user, 
+                `shared a post with you in your chat`
+            );
+            
+            console.log('Post shared successfully to DM');
+        } catch (error) {
+            console.error('Error sharing post:', error);
         }
     };
 
@@ -127,8 +175,74 @@ export default function FeedView({ user, onViewProfile }) {
                         onLike={handleLike}
                         onComment={handleComment}
                         onDelete={handleDeletePost}
+                        onShare={handleSharePost}
                     />
                 ))}
+            </div>
+            
+            {/* Delete Post Confirmation Modal */}
+            {showDeleteConfirm && (
+                <DeletePostModal 
+                    post={postToDelete}
+                    onConfirm={confirmDeletePost}
+                    onClose={() => {
+                        setShowDeleteConfirm(false);
+                        setPostToDelete(null);
+                    }}
+                />
+            )}
+        </div>
+    );
+}
+
+function DeletePostModal({ post, onConfirm, onClose }) {
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-sm">
+                <div className="flex items-center mb-4">
+                    <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mr-4">
+                        <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Delete Post</h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">This action cannot be undone</p>
+                    </div>
+                </div>
+                
+                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div className="flex items-center mb-2">
+                        <img src={post?.authorPhotoURL} alt={post?.authorName} className="w-6 h-6 rounded-full mr-2" />
+                        <span className="text-sm font-medium">{post?.authorName}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3">
+                        {post?.content?.length > 100 ? `${post.content.substring(0, 100)}...` : post?.content}
+                    </p>
+                    {post?.imageUrl && (
+                        <div className="mt-2">
+                            <img src={post.imageUrl} alt="Post content" className="rounded-lg max-h-20 w-full object-cover" />
+                        </div>
+                    )}
+                </div>
+                
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                    Are you sure you want to delete this post? It will be permanently removed and cannot be recovered.
+                </p>
+                
+                <div className="flex justify-end space-x-3">
+                    <button 
+                        onClick={onClose}
+                        className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={onConfirm}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center"
+                    >
+                        <Trash2 size={16} className="mr-2" />
+                        Delete Post
+                    </button>
+                </div>
             </div>
         </div>
     );
