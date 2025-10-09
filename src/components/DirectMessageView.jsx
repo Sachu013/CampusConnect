@@ -4,6 +4,20 @@ import { collection, query, onSnapshot, addDoc, serverTimestamp, orderBy, doc, d
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Send, Trash2, Paperclip, X, Heart, MessageCircle, AlertTriangle } from 'lucide-react';
 
+// Helper function to create notifications
+const createNotification = async (recipientId, sender, message) => {
+    if (recipientId === sender.uid) return;
+    const notificationsRef = collection(db, 'users', recipientId, 'notifications');
+    await addDoc(notificationsRef, {
+        message,
+        senderId: sender.uid,
+        senderName: sender.displayName,
+        senderPhotoURL: sender.photoURL,
+        createdAt: serverTimestamp(),
+        read: false,
+    });
+};
+
 export default function DirectMessageView({ user, recipient, onViewProfile }) {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
@@ -64,6 +78,13 @@ export default function DirectMessageView({ user, recipient, onViewProfile }) {
             photoURL: user.photoURL,
             createdAt: serverTimestamp(),
         });
+
+        // Create notification for the recipient
+        await createNotification(
+            recipient.id, 
+            user, 
+            `sent you a message: "${newMessage.trim() ? newMessage.substring(0, 50) + (newMessage.length > 50 ? '...' : '') : 'Image'}"` 
+        );
 
         setNewMessage('');
         setImageFile(null);

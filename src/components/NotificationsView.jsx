@@ -56,7 +56,7 @@ export default function NotificationsView({ user, onViewProfile, onStartDirectMe
         } else if (notification.message.includes('connection request')) {
             // Navigate to profile
             onViewProfile(notification.senderId);
-        } else if (notification.message.includes('message')) {
+        } else if (notification.message.includes('message') || notification.message.includes('sent you a message') || notification.message.includes('shared a post with you')) {
             // Navigate to DM
             onStartDirectMessage({
                 id: notification.senderId,
@@ -70,7 +70,7 @@ export default function NotificationsView({ user, onViewProfile, onStartDirectMe
         if (message.includes('liked')) return <Heart className="text-red-500" size={20} />;
         if (message.includes('commented')) return <MessageCircle className="text-blue-500" size={20} />;
         if (message.includes('connection')) return <UserPlus className="text-green-500" size={20} />;
-        if (message.includes('message')) return <Mail className="text-purple-500" size={20} />;
+        if (message.includes('message') || message.includes('shared a post')) return <Mail className="text-purple-500" size={20} />;
         return <Bell className="text-gray-500" size={20} />;
     };
 
