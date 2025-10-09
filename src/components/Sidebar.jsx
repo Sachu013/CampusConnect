@@ -3,7 +3,7 @@ import { db } from '@/firebaseConfig.js'; // Using the new '@' alias
 import { collection, query, onSnapshot, addDoc, serverTimestamp, where } from 'firebase/firestore';
 import { User, MessageSquare, Newspaper, LogOut, PlusSquare, X, Users, UserCheck } from 'lucide-react';
 
-export default function Sidebar({ user, setCurrentView, currentView, onSignOut, onViewProfile, onStartDirectMessage, onlineStatus, onJoinGroup, viewingProfileId }) {
+export default function Sidebar({ user, setCurrentView, currentView, onSignOut, onViewProfile, onStartDirectMessage, onlineStatus, onJoinGroup, viewingProfileId, sidebarOpen, setSidebarOpen }) {
     const [connections, setConnections] = useState([]);
     const [groups, setGroups] = useState([]);
     const [isCreatingGroup, setIsCreatingGroup] = useState(false);
@@ -52,22 +52,63 @@ export default function Sidebar({ user, setCurrentView, currentView, onSignOut, 
         onSignOut();
     };
 
+    const handleNavigation = (viewName, action) => {
+        if (action) action();
+        else setCurrentView(viewName);
+        // Close sidebar on mobile after navigation
+        if (setSidebarOpen) setSidebarOpen(false);
+    };
+
     return (
         <>
-            <aside className="w-64 bg-gray-800 text-white flex flex-col p-4">
-                <div className="text-2xl font-bold text-center py-4 mb-4 border-b border-gray-700">BITWave</div>
-                <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                    <nav className="space-y-2">
-                        <button onClick={() => setCurrentView('feed')} className={`flex items-center w-full text-left p-3 rounded-lg transition-colors ${currentView === 'feed' ? 'bg-purple-600 text-white' : 'hover:bg-gray-700'}`}><Newspaper size={20} /><span className="ml-3 font-medium">Feed</span></button>
-                        <button onClick={() => onViewProfile(user.uid)} className={`flex items-center w-full text-left p-3 rounded-lg transition-colors ${currentView === 'profile' && (!viewingProfileId || viewingProfileId === user.uid) ? 'bg-purple-600 text-white' : 'hover:bg-gray-700'}`}><User size={20} /><span className="ml-3 font-medium">Profile</span></button>
-                        <button onClick={() => setCurrentView('networks')} className={`flex items-center w-full text-left p-3 rounded-lg transition-colors ${currentView === 'networks' ? 'bg-purple-600 text-white' : 'hover:bg-gray-700'}`}><UserCheck size={20} /><span className="ml-3 font-medium">Networks</span></button>
+            <aside className="w-64 bg-gray-800 text-white flex flex-col h-screen">
+                {/* Header with close button for mobile */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-700">
+                    <div className="text-xl md:text-2xl font-bold">Campus Connect</div>
+                    {sidebarOpen && (
+                        <button 
+                            onClick={() => setSidebarOpen(false)}
+                            className="md:hidden p-2 rounded-lg hover:bg-gray-700 text-gray-300 hover:text-white transition-colors"
+                        >
+                            <X size={20} />
+                        </button>
+                    )}
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-4">
+                    <nav className="space-y-2 mb-6">
+                        <button 
+                            onClick={() => handleNavigation('feed')} 
+                            className={`flex items-center w-full text-left p-3 rounded-lg transition-colors touch-manipulation ${currentView === 'feed' ? 'bg-purple-600 text-white' : 'hover:bg-gray-700'}`}
+                        >
+                            <Newspaper size={20} />
+                            <span className="ml-3 font-medium">Feed</span>
+                        </button>
+                        <button 
+                            onClick={() => handleNavigation('profile', () => onViewProfile(user.uid))} 
+                            className={`flex items-center w-full text-left p-3 rounded-lg transition-colors touch-manipulation ${currentView === 'profile' && (!viewingProfileId || viewingProfileId === user.uid) ? 'bg-purple-600 text-white' : 'hover:bg-gray-700'}`}
+                        >
+                            <User size={20} />
+                            <span className="ml-3 font-medium">Profile</span>
+                        </button>
+                        <button 
+                            onClick={() => handleNavigation('networks')} 
+                            className={`flex items-center w-full text-left p-3 rounded-lg transition-colors touch-manipulation ${currentView === 'networks' ? 'bg-purple-600 text-white' : 'hover:bg-gray-700'}`}
+                        >
+                            <UserCheck size={20} />
+                            <span className="ml-3 font-medium">Networks</span>
+                        </button>
                     </nav>
 
 
                     <div className="pt-4 mt-4 border-t border-gray-700">
-                        <div className="flex justify-between items-center px-3 mb-2">
+                        <div className="flex justify-between items-center px-1 mb-3">
                             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Groups</h3>
-                            <button onClick={() => setIsCreatingGroup(true)} className="text-gray-400 hover:text-white">
+                            <button 
+                                onClick={() => setIsCreatingGroup(true)} 
+                                className="text-gray-400 hover:text-white p-1 rounded touch-manipulation"
+                                title="Create Group"
+                            >
                                 <PlusSquare size={18} />
                             </button>
                         </div>
@@ -75,13 +116,13 @@ export default function Sidebar({ user, setCurrentView, currentView, onSignOut, 
                             {groups.map(group => (
                                 <button 
                                     key={group.id} 
-                                    onClick={() => onJoinGroup(group)}
-                                    className="w-full text-left px-3 py-2 text-sm rounded-md text-gray-300 hover:bg-gray-700 hover:text-white flex items-center"
+                                    onClick={() => handleNavigation('group', () => onJoinGroup(group))}
+                                    className="w-full text-left px-3 py-3 text-sm rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white flex items-center touch-manipulation transition-colors"
                                 >
-                                    <Users size={16} className="mr-2" />
-                                    <span className="truncate">{group.name}</span>
+                                    <Users size={16} className="mr-3 flex-shrink-0" />
+                                    <span className="truncate flex-1">{group.name}</span>
                                     {group.createdBy === user.uid && (
-                                        <span className="ml-2 text-xs text-yellow-500">Admin</span>
+                                        <span className="ml-2 text-xs text-yellow-500 flex-shrink-0">Admin</span>
                                     )}
                                 </button>
                             ))}
@@ -89,19 +130,23 @@ export default function Sidebar({ user, setCurrentView, currentView, onSignOut, 
                     </div>
 
                     <div className="pt-4 mt-4 border-t border-gray-700">
-                        <h3 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Direct Messages</h3>
+                        <h3 className="px-1 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Direct Messages</h3>
                         <div className="space-y-1">
                             {connections.map(connection => {
                                 const isOnline = onlineStatus[connection.id]?.state === 'online';
                                 return (
-                                    <button key={connection.id} onClick={() => onStartDirectMessage(connection)} className="w-full text-left px-3 py-2 text-sm rounded-md text-gray-300 hover:bg-gray-700 hover:text-white flex items-center" >
-                                        <div className="relative">
-                                            <img src={connection.photoURL} alt={connection.displayName} className="w-6 h-6 rounded-full mr-2" />
+                                    <button 
+                                        key={connection.id} 
+                                        onClick={() => handleNavigation('dm', () => onStartDirectMessage(connection))} 
+                                        className="w-full text-left px-3 py-3 text-sm rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white flex items-center touch-manipulation transition-colors"
+                                    >
+                                        <div className="relative mr-3 flex-shrink-0">
+                                            <img src={connection.photoURL} alt={connection.displayName} className="w-8 h-8 rounded-full" />
                                             {isOnline && (
-                                                <div className="absolute bottom-0 right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-800"></div>
+                                                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-800"></div>
                                             )}
                                         </div>
-                                        <span className="truncate">{connection.displayName}</span>
+                                        <span className="truncate flex-1">{connection.displayName}</span>
                                     </button>
                                 );
                             })}
@@ -109,19 +154,20 @@ export default function Sidebar({ user, setCurrentView, currentView, onSignOut, 
                     </div>
                 </div>
 
-                <div className="mt-auto space-y-2">
+                {/* Footer section */}
+                <div className="border-t border-gray-700 p-4 space-y-3">
                     <button 
                         onClick={() => setShowLogoutConfirm(true)}
-                        className="w-full flex items-center p-3 text-left rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+                        className="w-full flex items-center p-3 text-left rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors touch-manipulation"
                     >
-                        <LogOut size={20} />
+                        <LogOut size={20} className="flex-shrink-0" />
                         <span className="ml-3 font-medium">Logout</span>
                     </button>
                     
                     <div className="flex items-center p-3 bg-gray-900 rounded-lg">
-                        <img src={user.photoURL} alt="User" className="w-10 h-10 rounded-full" />
-                        <div className="ml-3 flex-1">
-                            <p className="font-semibold text-sm">{user.displayName}</p>
+                        <img src={user.photoURL} alt="User" className="w-10 h-10 rounded-full flex-shrink-0" />
+                        <div className="ml-3 flex-1 min-w-0">
+                            <p className="font-semibold text-sm truncate">{user.displayName}</p>
                             <p className="text-xs text-gray-400 truncate">{user.email}</p>
                         </div>
                     </div>
@@ -162,12 +208,12 @@ function CreateGroupModal({ connections, onCreate, onClose }) {
     };
     
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-md max-h-96 overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 md:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">Create Private Group</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                        <X size={24}/>
+                    <h2 className="text-lg md:text-xl font-bold">Create Private Group</h2>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 touch-manipulation">
+                        <X size={20}/>
                     </button>
                 </div>
                 
@@ -182,7 +228,7 @@ function CreateGroupModal({ connections, onCreate, onClose }) {
                             value={groupName} 
                             onChange={(e) => setGroupName(e.target.value)} 
                             placeholder="e.g., Study Group"
-                            className="w-full p-2 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600" 
+                            className="w-full p-3 md:p-2 rounded-md border border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600 text-base" 
                             autoFocus 
                         />
                     </div>
@@ -234,12 +280,12 @@ function CreateGroupModal({ connections, onCreate, onClose }) {
 
 function LogoutConfirmModal({ onConfirm, onClose }) {
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-6 w-full max-w-sm">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 md:p-6 w-full max-w-sm">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">Confirm Logout</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                        <X size={24}/>
+                    <h2 className="text-lg md:text-xl font-bold">Confirm Logout</h2>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 touch-manipulation">
+                        <X size={20}/>
                     </button>
                 </div>
                 

@@ -26,6 +26,7 @@ export default function App() {
     const [activeDmRecipient, setActiveDmRecipient] = useState(null);
     const [activeGroup, setActiveGroup] = useState(null);
     const [onlineStatus, setOnlineStatus] = useState({});
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -108,18 +109,32 @@ export default function App() {
 
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans">
-            <Sidebar
-                user={user}
-                setCurrentView={setCurrentView}
-                currentView={currentView}
-                onSignOut={handleSignOut}
-                onViewProfile={handleViewProfile}
-                onStartDirectMessage={handleStartDirectMessage}
-                onJoinGroup={handleJoinGroup}
-                onlineStatus={onlineStatus}
-                viewingProfileId={viewingProfileId}
-            />
-            <main className="flex-1 flex flex-col">
+            {/* Mobile sidebar overlay */}
+            {sidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+            
+            {/* Sidebar */}
+            <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed md:static md:translate-x-0 inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out md:z-auto`}>
+                <Sidebar
+                    user={user}
+                    setCurrentView={setCurrentView}
+                    currentView={currentView}
+                    onSignOut={handleSignOut}
+                    onViewProfile={handleViewProfile}
+                    onStartDirectMessage={handleStartDirectMessage}
+                    onJoinGroup={handleJoinGroup}
+                    onlineStatus={onlineStatus}
+                    viewingProfileId={viewingProfileId}
+                    sidebarOpen={sidebarOpen}
+                    setSidebarOpen={setSidebarOpen}
+                />
+            </div>
+            
+            <main className="flex-1 flex flex-col min-w-0">
                 <Header 
                     user={user} 
                     view={currentView} 
@@ -127,8 +142,10 @@ export default function App() {
                     groupName={activeGroup?.name}
                     onSearchToggle={handleSearchToggle}
                     onNotificationsToggle={handleNotificationsToggle}
+                    sidebarOpen={sidebarOpen}
+                    setSidebarOpen={setSidebarOpen}
                 />
-                <div className="flex-1 overflow-y-auto p-4 md:p-6">
+                <div className="flex-1 overflow-y-auto p-3 md:p-6">
                     {currentView === 'feed' && <FeedView user={user} onViewProfile={handleViewProfile} />}
                     {currentView === 'search' && <SearchContainer user={user} onViewProfile={handleViewProfile} />}
                     {currentView === 'notifications' && (
