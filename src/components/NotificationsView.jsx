@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebaseConfig';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { Bell, Heart, MessageCircle, UserPlus, Mail, X, Check, Trash2 } from 'lucide-react';
+import { Bell, Heart, MessageCircle, UserPlus, Mail, X, Check, Trash2, Calendar, Megaphone } from 'lucide-react';
 
-export default function NotificationsView({ user, onViewProfile, onStartDirectMessage, setCurrentView }) {
+export default function NotificationsView({ user, onViewProfile, onStartDirectMessage, setCurrentView, setEventsNav }) {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -44,33 +44,40 @@ export default function NotificationsView({ user, onViewProfile, onStartDirectMe
     };
 
     const handleNotificationClick = async (notification) => {
-        // Mark as read
         if (!notification.read) {
             await markAsRead(notification.id);
         }
 
-        // Handle different notification types
-        if (notification.message.includes('liked your post') || notification.message.includes('commented on your post')) {
-            // Navigate to feed to see the post
+        // Event/Notice routing
+        if (notification.type === 'event' && notification.eventId) {
+            setEventsNav({ tab: 'events', id: notification.eventId });
+            setCurrentView('events');
+            return;
+        }
+        if (notification.type === 'notice' && notification.noticeId) {
+            setEventsNav({ tab: 'notices', id: notification.noticeId });
+            setCurrentView('events');
+            return;
+        }
+
+        // Legacy message-based routing
+        if (notification.message?.includes('liked your post') || notification.message?.includes('commented on your post')) {
             setCurrentView('feed');
-        } else if (notification.message.includes('connection request')) {
-            // Navigate to profile
+        } else if (notification.message?.includes('connection request')) {
             onViewProfile(notification.senderId);
-        } else if (notification.message.includes('message') || notification.message.includes('sent you a message') || notification.message.includes('shared a post with you')) {
-            // Navigate to DM
-            onStartDirectMessage({
-                id: notification.senderId,
-                displayName: notification.senderName,
-                photoURL: notification.senderPhotoURL
-            });
+        } else if (notification.message?.includes('message') || notification.message?.includes('sent you a message') || notification.message?.includes('shared a post with you')) {
+            onStartDirectMessage({ id: notification.senderId, displayName: notification.senderName, photoURL: notification.senderPhotoURL });
         }
     };
 
-    const getNotificationIcon = (message) => {
-        if (message.includes('liked')) return <Heart className="text-red-500" size={20} />;
-        if (message.includes('commented')) return <MessageCircle className="text-blue-500" size={20} />;
-        if (message.includes('connection')) return <UserPlus className="text-green-500" size={20} />;
-        if (message.includes('message') || message.includes('shared a post')) return <Mail className="text-purple-500" size={20} />;
+    const getNotificationIcon = (n) => {
+        if (n.type === 'event') return <Calendar className="text-purple-600" size={20} />;
+        if (n.type === 'notice') return <Megaphone className="text-purple-600" size={20} />;
+        const msg = n.message || '';
+        if (msg.includes('liked')) return <Heart className="text-red-500" size={20} />;
+        if (msg.includes('commented')) return <MessageCircle className="text-blue-500" size={20} />;
+        if (msg.includes('connection')) return <UserPlus className="text-green-500" size={20} />;
+        if (msg.includes('message') || msg.includes('shared a post')) return <Mail className="text-purple-500" size={20} />;
         return <Bell className="text-gray-500" size={20} />;
     };
 
@@ -137,20 +144,34 @@ export default function NotificationsView({ user, onViewProfile, onStartDirectMe
                                     className="flex-1 flex items-start text-left hover:opacity-80 transition-opacity"
                                 >
                                     <div className="flex-shrink-0 mr-3">
-                                        {getNotificationIcon(notification.message)}
+                                        {getNotificationIcon(notification)}
                                     </div>
                                     <div className="flex-1">
-                                        <div className="flex items-center mb-1">
-                                            <img 
-                                                src={notification.senderPhotoURL} 
-                                                alt={notification.senderName}
-                                                className="w-8 h-8 rounded-full mr-2"
-                                            />
+                                    <div className="flex items-center mb-1">
+                                            <div className="w-8 h-8 mr-2 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                                                {notification?.senderPhotoURL ? (
+                                                    <img
+                                                        src={notification.senderPhotoURL}
+                                                        alt={notification.senderName || ''}
+                                                        className="w-8 h-8 rounded-full"
+                                                    />
+                                                ) : (
+                                                    notification.type === 'event' ? (
+                                                        <Calendar size={16} className="text-purple-600" />
+                                                    ) : notification.type === 'notice' ? (
+                                                        <Megaphone size={16} className="text-purple-600" />
+                                                    ) : (
+                                                        <Bell size={16} className="text-gray-500" />
+                                                    )
+                                                )}
+                                            </div>
                                             <div>
-                                                <span className="font-semibold text-sm">
-                                                    {notification.senderName}
-                                                </span>
-                                                <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">
+                                                {notification?.senderName && (
+                                                    <span className="font-semibold text-sm">
+                                                        {notification.senderName}
+                                                    </span>
+                                                )}
+                                                <span className={`text-sm text-gray-600 dark:text-gray-400 ${notification?.senderName ? 'ml-1' : ''}`}>
                                                     {notification.message}
                                                 </span>
                                             </div>

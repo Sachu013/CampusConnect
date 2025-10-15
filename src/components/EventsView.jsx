@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Megaphone } from 'lucide-react';
 import CampusEvents from './CampusEvents.jsx';
 import NoticeBoard from './NoticeBoard.jsx';
 
-export default function EventsView({ user }) {
-    const [activeTab, setActiveTab] = useState('events');
+export default function EventsView({ user, initialTab = 'events', highlightId }) {
+    const [activeTab, setActiveTab] = useState(initialTab);
+
+    // Update active tab when coming from notifications
+    useEffect(() => {
+        if (initialTab === 'events' || initialTab === 'notices') {
+            setActiveTab(initialTab);
+        }
+    }, [initialTab]);
 
     return (
         <div className="max-w-6xl mx-auto">
@@ -48,8 +55,8 @@ export default function EventsView({ user }) {
 
             {/* Tab Content */}
             <div className="min-h-[500px]">
-                {activeTab === 'events' && <CampusEvents user={user} />}
-                {activeTab === 'notices' && <NoticeBoard user={user} />}
+                {activeTab === 'events' && <CampusEvents user={user} highlightId={highlightId} />}
+                {activeTab === 'notices' && <NoticeBoard user={user} highlightId={highlightId} />}
             </div>
         </div>
     );

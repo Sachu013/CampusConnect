@@ -26,10 +26,10 @@ export default function SearchView({ searchTerm, onViewProfile }) {
                 const allUsers = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 
                 // Filter users client-side to avoid index requirements
-                const filteredUsers = allUsers.filter(user => 
-                    user.displayName && 
-                    user.displayName.toLowerCase().includes(searchTerm.toLowerCase())
-                ).slice(0, 10);
+                // Filter users client-side to avoid index requirements
+                const filteredUsers = allUsers.filter(u => (
+                    u.displayName && u.displayName.toLowerCase().includes(searchTerm.toLowerCase())
+                )).slice(0, 10);
                 
                 setUserResults(filteredUsers);
 
@@ -37,12 +37,12 @@ export default function SearchView({ searchTerm, onViewProfile }) {
                 const postsRef = collection(db, 'posts');
                 const postSnapshot = await getDocs(postsRef);
                 const allPosts = postSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                const usersById = Object.fromEntries(allUsers.map(u => [u.uid || u.id, u]));
                 
                 // Filter posts client-side to avoid index requirements
-                const filteredPosts = allPosts.filter(post => 
-                    post.content && 
-                    post.content.toLowerCase().includes(searchTerm.toLowerCase())
-                ).slice(0, 10);
+                const filteredPosts = allPosts.filter(post => (
+                    post.content && post.content.toLowerCase().includes(searchTerm.toLowerCase())
+                )).slice(0, 10);
                 
                 setPostResults(filteredPosts);
                 setLoading(false);
@@ -128,6 +128,9 @@ export default function SearchView({ searchTerm, onViewProfile }) {
                                             {highlightText(user.displayName, searchTerm)}
                                         </p>
                                         <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+                                        {(user.department || user.major) && (
+                                            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">{user.department || user.major}</p>
+                                        )}
                                     </div>
                                     <div className="text-xs text-gray-400">
                                         {user.lastLogin ? new Date(user.lastLogin.seconds * 1000).toLocaleDateString() : ''}
@@ -165,6 +168,9 @@ export default function SearchView({ searchTerm, onViewProfile }) {
                                     </button>
                                     <div className="text-gray-700 dark:text-gray-300 mb-2">
                                         {highlightText(post.content, searchTerm)}
+                                    </div>
+                                    <div className="text-xs text-purple-600 dark:text-purple-400 mb-2">
+                                        {(usersById[post.authorId]?.department || usersById[post.authorId]?.major) || ''}
                                     </div>
                                     {post.imageUrl && (
                                         <img src={post.imageUrl} alt="Post content" className="rounded-lg mb-2 max-h-40 w-full object-cover" />

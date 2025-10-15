@@ -4,6 +4,7 @@ import { collection, query, where, orderBy, onSnapshot, doc, setDoc, deleteDoc, 
 import { ref, deleteObject } from 'firebase/storage';
 import { Edit, X, UserPlus, CheckCircle, UserX, UserCheck, Send } from 'lucide-react';
 import PostItem from './PostItem.jsx'; // Corrected to relative path
+import { DEPARTMENTS } from '@/constants/departments.js';
 
 // createNotification helper function (unchanged)
 const createNotification = async (recipientId, sender, message) => {
@@ -179,7 +180,7 @@ export default function ProfileView({ loggedInUser, profileUserId, onViewProfile
                 </div>
                 <div className="mt-6 w-full space-y-4">
                      <div><h3 className="font-semibold text-lg">Bio</h3><p className="text-gray-600 dark:text-gray-400 italic">{profileData.bio || "No bio yet."}</p></div>
-                     <div><h3 className="font-semibold text-lg">Major</h3><p className="text-gray-600 dark:text-gray-400">{profileData.major || "Not specified."}</p></div>
+                     <div><h3 className="font-semibold text-lg">Department</h3><p className="text-gray-600 dark:text-gray-400">{profileData.department || profileData.major || "Not specified."}</p></div>
                      <div><h3 className="font-semibold text-lg">Graduation Year</h3><p className="text-gray-600 dark:text-gray-400">{profileData.gradYear || "Not specified."}</p></div>
                 </div>
             </div>
@@ -203,7 +204,7 @@ export default function ProfileView({ loggedInUser, profileUserId, onViewProfile
 }
 
 function EditProfileModal({ userProfile, onSave, onClose }) {
-    const [formData, setFormData] = useState({ bio: userProfile.bio || '', major: userProfile.major || '', gradYear: userProfile.gradYear || '' });
+    const [formData, setFormData] = useState({ bio: userProfile.bio || '', department: userProfile.department || userProfile.major || '', gradYear: userProfile.gradYear || '' });
     const handleChange = (e) => { setFormData(prev => ({ ...prev, [e.target.name]: e.target.value })); };
     const handleSubmit = (e) => { e.preventDefault(); onSave(formData); };
     return (
@@ -219,8 +220,13 @@ function EditProfileModal({ userProfile, onSave, onClose }) {
                         <textarea name="bio" id="bio" value={formData.bio} onChange={handleChange} rows="3" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600"></textarea>
                     </div>
                     <div>
-                        <label htmlFor="major" className="block text-sm font-medium">Major</label>
-                        <input type="text" name="major" id="major" value={formData.major} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600" />
+                        <label htmlFor="department" className="block text-sm font-medium">Department</label>
+                        <select name="department" id="department" value={formData.department} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600">
+                            <option value="">Select Department</option>
+                            {DEPARTMENTS.map(dep => (
+                                <option key={dep} value={dep}>{dep}</option>
+                            ))}
+                        </select>
                     </div>
                     <div>
                         <label htmlFor="gradYear" className="block text-sm font-medium">Graduation Year</label>

@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '@/firebaseConfig.js';
-import { collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, where } from 'firebase/firestore';
-import { Calendar, Clock, MapPin, Users, Plus, Check, X, Star } from 'lucide-react';
+import { collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy, where, getDocs } from 'firebase/firestore';
+import { Calendar, Clock, MapPin, Users, Plus, Check, X, Star, BarChart3 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal.jsx';
 
-export default function CampusEvents({ user }) {
+export default function CampusEvents({ user, highlightId }) {
     const [events, setEvents] = useState([]);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [deleteTarget, setDeleteTarget] = useState(null);
+const [deleteTarget, setDeleteTarget] = useState(null);
+    const [insightsEvent, setInsightsEvent] = useState(null);
+    const [searchText, setSearchText] = useState('');
 
     useEffect(() => {
         const eventsRef = query(
@@ -113,13 +115,13 @@ export default function CampusEvents({ user }) {
         return eventEnd < new Date();
     };
 
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-            </div>
-        );
-    }
+    // Auto-scroll to highlighted event (must be before any early returns)
+    useEffect(() => {
+        if (highlightId) {
+            const el = document.getElementById(`event-${highlightId}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [highlightId, events]);
 
     return (
         <div>
@@ -138,14 +140,30 @@ export default function CampusEvents({ user }) {
                 </button>
             </div>
 
+            {/* Search */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
+                <input
+                    type="text"
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    placeholder="Search events by title, description, or location..."
+                    className="w-full p-2 rounded-md bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+            </div>
+
             {/* Events Grid */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {events.map(event => {
+                {events
+                    .filter(ev => {
+                        const txt = `${ev.title||''} ${ev.description||''} ${ev.location||''}`.toLowerCase();
+                        return searchText.trim() === '' ? true : txt.includes(searchText.toLowerCase());
+                    })
+                    .map(event => {
                     const userRSVP = getUserRSVPStatus(event);
                     const isPast = isEventPast(event.endDate);
                     
                     return (
-                        <div key={event.id} className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden ${isPast ? 'opacity-75' : ''}`}>
+                        <div id={`event-${event.id}`} key={event.id} className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border ${event.id === highlightId ? 'border-yellow-400 ring-2 ring-yellow-300' : 'border-gray-200 dark:border-gray-700'} overflow-hidden ${isPast ? 'opacity-75' : ''}`}>
                             {/* Event Image */}
                             {event.imageURL && (
                                 <div className="h-48 bg-cover bg-center" style={{ backgroundImage: `url(${event.imageURL})` }}>
@@ -176,14 +194,23 @@ export default function CampusEvents({ user }) {
                                             }`}>
                                                 {event.category}
                                             </span>
-                                            {event.createdBy === user.uid && (
-                                                <button
-                                                    onClick={() => setDeleteTarget(event)}
-                                                    className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                                                    title="Delete Event"
-                                                >
-                                                    <X size={16} />
-                                                </button>
+{event.createdBy === user.uid && (
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => setInsightsEvent(event)}
+                                                        className="px-2 py-1 rounded-md text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:opacity-90 flex items-center"
+                                                        title="View Insights"
+                                                    >
+                                                        <BarChart3 size={14} className="mr-1" /> Insights
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setDeleteTarget(event)}
+                                                        className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                                        title="Delete Event"
+                                                    >
+                                                        <X size={16} />
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -303,10 +330,85 @@ export default function CampusEvents({ user }) {
                     onClose={() => setDeleteTarget(null)}
                 />
             )}
+
+            {insightsEvent && (
+                <EventInsightsModal event={insightsEvent} onClose={() => setInsightsEvent(null)} />
+            )}
         </div>
     );
 }
 
+function EventInsightsModal({ event, onClose }) {
+    const going = (event.attendees || []).filter(a => a.status === 'going');
+    const interested = (event.attendees || []).filter(a => a.status === 'interested');
+    const notGoing = (event.attendees || []).filter(a => a.status === 'not-going');
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                    <div>
+                        <h3 className="text-lg font-semibold">Event Insights</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{event.title}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <X size={18} />
+                    </button>
+                </div>
+                <div className="p-4 space-y-4">
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="rounded-lg p-3 bg-green-50 dark:bg-green-900/20">
+                            <p className="text-xs text-gray-500">Going</p>
+                            <p className="text-2xl font-bold text-green-700 dark:text-green-300">{going.length}</p>
+                        </div>
+                        <div className="rounded-lg p-3 bg-yellow-50 dark:bg-yellow-900/20">
+                            <p className="text-xs text-gray-500">Interested</p>
+                            <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{interested.length}</p>
+                        </div>
+                        <div className="rounded-lg p-3 bg-red-50 dark:bg-red-900/20">
+                            <p className="text-xs text-gray-500">Not Going</p>
+                            <p className="text-2xl font-bold text-red-700 dark:text-red-300">{notGoing.length}</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 className="font-semibold mb-2">Recent RSVPs</h4>
+                        <div className="space-y-2 max-h-56 overflow-y-auto">
+                            {[...going, ...interested, ...notGoing]
+                                .sort((a, b) => new Date(b.rsvpDate) - new Date(a.rsvpDate))
+                                .slice(0, 20)
+                                .map(att => (
+                                    <div key={att.uid} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                                        <div className="flex items-center">
+                                            <img src={att.photoURL} alt={att.displayName} className="w-8 h-8 rounded-full mr-2" />
+                                            <div>
+                                                <p className="text-sm font-medium">{att.displayName}</p>
+                                                <p className="text-xs text-gray-500">{new Date(att.rsvpDate).toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                        <span className={`text-xs px-2 py-1 rounded ${att.status === 'going' ? 'bg-green-100 text-green-700' : att.status === 'interested' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                                            {att.status}
+                                        </span>
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                            <p className="text-xs text-gray-500">Location</p>
+                            <p className="font-medium">{event.location}</p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                            <p className="text-xs text-gray-500">Created</p>
+                            <p className="font-medium">{event.createdAt?.toDate ? event.createdAt.toDate().toLocaleString() : ''}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 function CreateEventModal({ user, onClose }) {
     const [formData, setFormData] = useState({
         title: '',
@@ -325,7 +427,7 @@ function CreateEventModal({ user, onClose }) {
         setLoading(true);
         
         try {
-            await addDoc(collection(db, "events"), {
+            const docRef = await addDoc(collection(db, "events"), {
                 ...formData,
                 startDate: new Date(formData.startDate),
                 endDate: new Date(formData.endDate),
@@ -334,6 +436,22 @@ function CreateEventModal({ user, onClose }) {
                 createdAt: serverTimestamp(),
                 attendees: []
             });
+
+            // Notify all users about the new event
+            const usersSnap = await getDocs(collection(db, 'users'));
+            const notifications = [];
+            for (const u of usersSnap.docs) {
+                const uid = u.id;
+                notifications.push(addDoc(collection(db, 'users', uid, 'notifications'), {
+                    message: `New event: ${formData.title}`,
+                    type: 'event',
+                    eventId: docRef.id,
+                    createdAt: serverTimestamp(),
+                    read: false,
+                }));
+            }
+            await Promise.allSettled(notifications);
+
             onClose();
         } catch (error) {
             console.error("Error creating event:", error);

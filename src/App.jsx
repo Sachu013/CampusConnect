@@ -31,6 +31,8 @@ export default function App() {
     const [connections, setConnections] = useState([]);
     const [isCreatingGroup, setIsCreatingGroup] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    // Navigation target for Events/Notices from notifications
+    const [eventsNav, setEventsNav] = useState(null); // { tab: 'events'|'notices', id: string }
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -192,6 +194,7 @@ export default function App() {
                             onViewProfile={handleViewProfile}
                             onStartDirectMessage={handleStartDirectMessage}
                             setCurrentView={setCurrentView}
+                            setEventsNav={setEventsNav}
                         />
                     )}
                     {currentView === 'networks' && (
@@ -204,6 +207,8 @@ export default function App() {
                     {currentView === 'events' && (
                         <EventsView 
                             user={user}
+                            initialTab={eventsNav?.tab}
+                            highlightId={eventsNav?.id}
                         />
                     )}
                     {currentView === 'profile' && <ProfileView loggedInUser={user} profileUserId={viewingProfileId || user.uid} onViewProfile={handleViewProfile} />}

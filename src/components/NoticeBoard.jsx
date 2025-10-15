@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '@/firebaseConfig.js';
-import { collection, query, onSnapshot, addDoc, serverTimestamp, orderBy, deleteDoc, doc } from 'firebase/firestore';
-import { Megaphone, Pin, Calendar, User, Plus, X, AlertCircle, Info, CheckCircle } from 'lucide-react';
+import { collection, query, onSnapshot, addDoc, serverTimestamp, orderBy, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { Megaphone, Pin, Calendar, User, Plus, X, AlertCircle, Info, CheckCircle, BarChart3 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal.jsx';
+import { DEPARTMENTS } from '@/constants/departments.js';
 
-export default function NoticeBoard({ user }) {
+export default function NoticeBoard({ user, highlightId }) {
     const [notices, setNotices] = useState([]);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [loading, setLoading] = useState(true);
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [insightsNotice, setInsightsNotice] = useState(null);
+
+    // Filters
+    const [searchText, setSearchText] = useState('');
+    const [deptFilter, setDeptFilter] = useState('ALL');
 
     useEffect(() => {
         const noticesRef = query(
@@ -27,6 +33,14 @@ export default function NoticeBoard({ user }) {
 
         return () => unsubscribe();
     }, []);
+
+    // Auto-scroll to highlighted notice (must be before any early returns)
+    useEffect(() => {
+        if (highlightId) {
+            const el = document.getElementById(`notice-${highlightId}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [highlightId, notices]);
 
     const handleDeleteNotice = async (noticeId, createdBy) => {
         if (createdBy !== user.uid) return;
@@ -118,12 +132,43 @@ export default function NoticeBoard({ user }) {
                 </button>
             </div>
 
+            {/* Filters */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-4">
+                <div className="flex flex-col md:flex-row gap-3">
+                    <input
+                        type="text"
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        placeholder="Search notices by title or content..."
+                        className="flex-1 p-2 rounded-md bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <select
+                        value={deptFilter}
+                        onChange={(e) => setDeptFilter(e.target.value)}
+                        className="w-full md:w-64 p-2 rounded-md bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                        <option value="ALL">ALL</option>
+                        {DEPARTMENTS.map(dep => (
+                            <option key={dep} value={dep}>{dep}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
             {/* Notices List */}
             <div className="space-y-4">
-                {notices.map(notice => (
+                {notices
+                    .filter(n => {
+                        const matchesDept = deptFilter === 'ALL' ? true : (n.departmentFrom === deptFilter);
+                        const text = `${n.title || ''} ${n.content || ''}`.toLowerCase();
+                        const matchesText = searchText.trim() === '' ? true : text.includes(searchText.toLowerCase());
+                        return matchesDept && matchesText;
+                    })
+                    .map(notice => (
                     <div 
+                        id={`notice-${notice.id}`}
                         key={notice.id} 
-                        className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border-l-4 ${getPriorityBorder(notice.priority)} border-r border-t border-b border-gray-200 dark:border-gray-700 overflow-hidden`}
+                        className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border-l-4 ${getPriorityBorder(notice.priority)} border ${notice.id === highlightId ? 'border-yellow-400 ring-2 ring-yellow-300' : 'border-gray-200 dark:border-gray-700'} overflow-hidden`}
                     >
                         <div className="p-4 md:p-6">
                             {/* Header */}
@@ -144,13 +189,22 @@ export default function NoticeBoard({ user }) {
                                 {/* Actions */}
                                 <div className="flex items-center space-x-2">
                                     {notice.createdBy === user.uid && (
-                                        <button
-                                            onClick={() => setDeleteTarget(notice)}
-                                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                            title="Delete Notice"
-                                        >
-                                            <X size={16} />
-                                        </button>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => setInsightsNotice(notice)}
+                                                className="px-2 py-1 rounded-md text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:opacity-90 flex items-center"
+                                                title="View Insights"
+                                            >
+                                                <BarChart3 size={14} className="mr-1" /> Insights
+                                            </button>
+                                            <button
+                                                onClick={() => setDeleteTarget(notice)}
+                                                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                                title="Delete Notice"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -237,6 +291,61 @@ export default function NoticeBoard({ user }) {
                     onClose={() => setDeleteTarget(null)}
                 />
             )}
+
+            {insightsNotice && (
+                <NoticeInsightsModal
+                    notice={insightsNotice}
+                    onClose={() => setInsightsNotice(null)}
+                />
+            )}
+        </div>
+    );
+}
+
+function NoticeInsightsModal({ notice, onClose }) {
+    return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                    <div>
+                        <h3 className="text-lg font-semibold">Notice Insights</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{notice.title}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <X size={18} />
+                    </button>
+                </div>
+                <div className="p-4 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                            <p className="text-xs text-gray-500">Category</p>
+                            <p className="font-medium">{notice.category}</p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                            <p className="text-xs text-gray-500">Priority</p>
+                            <p className="font-medium capitalize">{notice.priority}</p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                            <p className="text-xs text-gray-500">Department</p>
+                            <p className="font-medium">{notice.departmentFrom || '—'}</p>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                            <p className="text-xs text-gray-500">Created</p>
+                            <p className="font-medium">{notice.createdAt?.toDate ? notice.createdAt.toDate().toLocaleString() : ''}</p>
+                        </div>
+                    </div>
+                    {notice.attachmentURL && (
+                        <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded">
+                            <p className="text-xs text-gray-500">Attachment</p>
+                            <a className="text-purple-600 dark:text-purple-300 underline break-all" href={notice.attachmentURL} target="_blank" rel="noreferrer">{notice.attachmentURL}</a>
+                        </div>
+                    )}
+                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                        <p className="text-xs text-gray-500">Pinned</p>
+                        <p className="font-medium">{notice.pinned ? 'Yes' : 'No'}</p>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
@@ -259,13 +368,35 @@ function CreateNoticeModal({ user, onClose }) {
         setLoading(true);
         
         try {
-            await addDoc(collection(db, "notices"), {
+            const docRef = await addDoc(collection(db, "notices"), {
                 ...formData,
                 expiresAt: formData.expiresAt ? new Date(formData.expiresAt) : null,
                 createdBy: user.uid,
                 createdByName: user.displayName,
                 createdAt: serverTimestamp()
             });
+
+            // Notify users based on department selection
+            const usersSnap = await getDocs(collection(db, 'users'));
+            const notifications = [];
+            const targetDept = (formData.departmentFrom || '').toUpperCase();
+            for (const u of usersSnap.docs) {
+                const data = u.data() || {};
+                const userDept = (data.department || data.major || '').toUpperCase();
+                const shouldNotify = targetDept === 'ALL' || !userDept || userDept === targetDept;
+                if (shouldNotify) {
+                    notifications.push(addDoc(collection(db, 'users', u.id, 'notifications'), {
+                        message: `New notice: ${formData.title}`,
+                        type: 'notice',
+                        noticeId: docRef.id,
+                        department: formData.departmentFrom || '',
+                        createdAt: serverTimestamp(),
+                        read: false,
+                    }));
+                }
+            }
+            await Promise.allSettled(notifications);
+
             onClose();
         } catch (error) {
             console.error("Error creating notice:", error);
@@ -350,14 +481,18 @@ function CreateNoticeModal({ user, onClose }) {
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Department
                             </label>
-                            <input
-                                type="text"
+                            <select
                                 value={formData.departmentFrom}
                                 onChange={(e) => setFormData({...formData, departmentFrom: e.target.value})}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-gray-700 dark:border-gray-600"
-                                placeholder="e.g., CSE Dept"
                                 required
-                            />
+                            >
+                                <option value="">Select Department</option>
+                                <option value="ALL">ALL</option>
+                                {DEPARTMENTS.map(dep => (
+                                    <option key={dep} value={dep}>{dep}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 
