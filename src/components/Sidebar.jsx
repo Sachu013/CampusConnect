@@ -3,11 +3,9 @@ import { db } from '@/firebaseConfig.js'; // Using the new '@' alias
 import { collection, query, onSnapshot, addDoc, serverTimestamp, where } from 'firebase/firestore';
 import { User, MessageSquare, Newspaper, LogOut, PlusSquare, X, Users, UserCheck } from 'lucide-react';
 
-export default function Sidebar({ user, setCurrentView, currentView, onSignOut, onViewProfile, onStartDirectMessage, onlineStatus, onJoinGroup, viewingProfileId, sidebarOpen, setSidebarOpen }) {
+export default function Sidebar({ user, setCurrentView, currentView, onSignOut, onViewProfile, onStartDirectMessage, onlineStatus, onJoinGroup, viewingProfileId, sidebarOpen, setSidebarOpen, onCreateGroup, onShowLogoutConfirm }) {
     const [connections, setConnections] = useState([]);
     const [groups, setGroups] = useState([]);
-    const [isCreatingGroup, setIsCreatingGroup] = useState(false);
-    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
 
     useEffect(() => {
@@ -30,27 +28,6 @@ export default function Sidebar({ user, setCurrentView, currentView, onSignOut, 
         return () => unsubscribe();
     }, [user]);
 
-    const handleCreateGroup = async (groupName, selectedMembers) => {
-        if (groupName.trim() === '') return;
-        try {
-            const members = [user.uid, ...selectedMembers];
-            await addDoc(collection(db, "groups"), {
-                name: groupName.trim(),
-                createdBy: user.uid,
-                members: members,
-                createdAt: serverTimestamp(),
-                private: true
-            });
-            setIsCreatingGroup(false);
-        } catch (error) {
-            console.error("Error creating group:", error);
-        }
-    };
-
-    const handleLogoutConfirm = () => {
-        setShowLogoutConfirm(false);
-        onSignOut();
-    };
 
     const handleNavigation = (viewName, action) => {
         if (action) action();
@@ -105,7 +82,7 @@ export default function Sidebar({ user, setCurrentView, currentView, onSignOut, 
                         <div className="flex justify-between items-center px-1 mb-3">
                             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Groups</h3>
                             <button 
-                                onClick={() => setIsCreatingGroup(true)} 
+                                onClick={onCreateGroup} 
                                 className="text-gray-400 hover:text-white p-1 rounded touch-manipulation"
                                 title="Create Group"
                             >
@@ -157,7 +134,7 @@ export default function Sidebar({ user, setCurrentView, currentView, onSignOut, 
                 {/* Footer section */}
                 <div className="border-t border-gray-700 p-4 space-y-3">
                     <button 
-                        onClick={() => setShowLogoutConfirm(true)}
+                        onClick={onShowLogoutConfirm}
                         className="w-full flex items-center p-3 text-left rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors touch-manipulation"
                     >
                         <LogOut size={20} className="flex-shrink-0" />
@@ -173,24 +150,11 @@ export default function Sidebar({ user, setCurrentView, currentView, onSignOut, 
                     </div>
                 </div>
             </aside>
-            {isCreatingGroup && (
-                <CreateGroupModal 
-                    connections={connections}
-                    onCreate={handleCreateGroup} 
-                    onClose={() => setIsCreatingGroup(false)} 
-                />
-            )}
-            {showLogoutConfirm && (
-                <LogoutConfirmModal 
-                    onConfirm={handleLogoutConfirm}
-                    onClose={() => setShowLogoutConfirm(false)}
-                />
-            )}
         </>
     );
 }
 
-function CreateGroupModal({ connections, onCreate, onClose }) {
+export function CreateGroupModal({ connections, onCreate, onClose }) {
     const [groupName, setGroupName] = useState('');
     const [selectedMembers, setSelectedMembers] = useState([]);
     
@@ -278,7 +242,7 @@ function CreateGroupModal({ connections, onCreate, onClose }) {
     );
 }
 
-function LogoutConfirmModal({ onConfirm, onClose }) {
+export function LogoutConfirmModal({ onConfirm, onClose }) {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 md:p-6 w-full max-w-sm">

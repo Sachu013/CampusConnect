@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { auth, db, rtdb } from '@/firebaseConfig.js';
 import ProfileView from '@/components/ProfileView.jsx';
 import FeedView from '@/components/FeedView.jsx';
-import Sidebar from '@/components/Sidebar.jsx';
+import Sidebar, { CreateGroupModal, LogoutConfirmModal } from '@/components/Sidebar.jsx';
 import DirectMessageView from '@/components/DirectMessageView.jsx';
 import Header from '@/components/Header.jsx';
 import SearchContainer from '@/components/SearchContainer.jsx';
@@ -14,7 +14,7 @@ import NetworksView from '@/components/NetworksView.jsx';
 
 // Import Firebase SDKs
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, collection, addDoc, query, onSnapshot, where } from 'firebase/firestore';
 import { ref, onValue, set, onDisconnect } from "firebase/database";
 import { LogIn } from 'lucide-react';
 
@@ -27,6 +27,9 @@ export default function App() {
     const [activeGroup, setActiveGroup] = useState(null);
     const [onlineStatus, setOnlineStatus] = useState({});
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [connections, setConnections] = useState([]);
+    const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -61,6 +64,16 @@ export default function App() {
         });
         return () => unsubscribe();
     }, []);
+
+    useEffect(() => {
+        if (!user) return;
+        const q = query(collection(db, "users", user.uid, "connections"));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const connectionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setConnections(connectionsData);
+        });
+        return () => unsubscribe();
+    }, [user]);
 
     const handleViewProfile = (userId) => {
         setViewingProfileId(userId);
@@ -104,6 +117,28 @@ export default function App() {
         }
     };
 
+    const handleCreateGroup = async (groupName, selectedMembers) => {
+        if (groupName.trim() === '') return;
+        try {
+            const members = [user.uid, ...selectedMembers];
+            await addDoc(collection(db, "groups"), {
+                name: groupName.trim(),
+                createdBy: user.uid,
+                members: members,
+                createdAt: serverTimestamp(),
+                private: true
+            });
+            setIsCreatingGroup(false);
+        } catch (error) {
+            console.error("Error creating group:", error);
+        }
+    };
+
+    const handleLogoutConfirm = () => {
+        setShowLogoutConfirm(false);
+        handleSignOut();
+    };
+
     if (loading) return <LoadingSpinner />;
     if (!user) return <LoginScreen onLogin={handleLogin} />;
 
@@ -131,6 +166,8 @@ export default function App() {
                     viewingProfileId={viewingProfileId}
                     sidebarOpen={sidebarOpen}
                     setSidebarOpen={setSidebarOpen}
+                    onCreateGroup={() => setIsCreatingGroup(true)}
+                    onShowLogoutConfirm={() => setShowLogoutConfirm(true)}
                 />
             </div>
             
@@ -174,6 +211,21 @@ export default function App() {
                     )}
                 </div>
             </main>
+            
+            {/* Modals rendered at app level for proper overlay positioning */}
+            {isCreatingGroup && (
+                <CreateGroupModal 
+                    connections={connections}
+                    onCreate={handleCreateGroup} 
+                    onClose={() => setIsCreatingGroup(false)} 
+                />
+            )}
+            {showLogoutConfirm && (
+                <LogoutConfirmModal 
+                    onConfirm={handleLogoutConfirm}
+                    onClose={() => setShowLogoutConfirm(false)}
+                />
+            )}
         </div>
     );
 }
