@@ -30,6 +30,7 @@ export default function Header({ view, channelName, dmRecipientName, groupName, 
         group: `${groupName || 'Group Chat'}`,
         search: 'Search',
         notifications: 'Notifications',
+        events: 'Events & Notices',
     };
 
     

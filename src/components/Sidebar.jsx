@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '@/firebaseConfig.js'; // Using the new '@' alias
 import { collection, query, onSnapshot, addDoc, serverTimestamp, where } from 'firebase/firestore';
-import { User, MessageSquare, Newspaper, LogOut, PlusSquare, X, Users, UserCheck } from 'lucide-react';
+import { User, MessageSquare, Newspaper, LogOut, PlusSquare, X, Users, UserCheck, Calendar } from 'lucide-react';
 
 export default function Sidebar({ user, setCurrentView, currentView, onSignOut, onViewProfile, onStartDirectMessage, onlineStatus, onJoinGroup, viewingProfileId, sidebarOpen, setSidebarOpen, onCreateGroup, onShowLogoutConfirm }) {
     const [connections, setConnections] = useState([]);
@@ -74,6 +74,13 @@ export default function Sidebar({ user, setCurrentView, currentView, onSignOut, 
                         >
                             <UserCheck size={20} />
                             <span className="ml-3 font-medium">Networks</span>
+                        </button>
+                        <button 
+                            onClick={() => handleNavigation('events')} 
+                            className={`flex items-center w-full text-left p-3 rounded-lg transition-colors touch-manipulation ${currentView === 'events' ? 'bg-purple-600 text-white' : 'hover:bg-gray-700'}`}
+                        >
+                            <Calendar size={20} />
+                            <span className="ml-3 font-medium">Events</span>
                         </button>
                     </nav>
 

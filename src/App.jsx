@@ -11,6 +11,7 @@ import SearchContainer from '@/components/SearchContainer.jsx';
 import NotificationsView from '@/components/NotificationsView.jsx';
 import GroupChatView from '@/components/GroupChatView.jsx';
 import NetworksView from '@/components/NetworksView.jsx';
+import EventsView from '@/components/EventsView.jsx';
 
 // Import Firebase SDKs
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
@@ -198,6 +199,11 @@ export default function App() {
                             user={user}
                             onViewProfile={handleViewProfile}
                             onStartDirectMessage={handleStartDirectMessage}
+                        />
+                    )}
+                    {currentView === 'events' && (
+                        <EventsView 
+                            user={user}
                         />
                     )}
                     {currentView === 'profile' && <ProfileView loggedInUser={user} profileUserId={viewingProfileId || user.uid} onViewProfile={handleViewProfile} />}
