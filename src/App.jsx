@@ -37,6 +37,13 @@ export default function App() {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (currentUser) {
+                const ok = currentUser.emailVerified && currentUser.email?.toLowerCase().endsWith('@bitsathy.ac.in');
+                if (!ok) {
+                    try { await currentUser.delete(); } catch (e) {}
+                    try { await signOut(auth); } catch (e) {}
+                    setLoading(false);
+                    return;
+                }
                 const userRef = doc(db, "users", currentUser.uid);
                 await setDoc(userRef, {
                     uid: currentUser.uid,
@@ -103,8 +110,20 @@ export default function App() {
 
     const handleLogin = async () => {
         const provider = new GoogleAuthProvider();
-        try { await signInWithPopup(auth, provider); }
-        catch (error) { console.error("Error during Google sign-in", error); }
+        // Hint the Google account picker to the college domain (UX only)
+        provider.setCustomParameters({ hd: 'bitsathy.ac.in' });
+        try {
+            await signInWithPopup(auth, provider);
+        } catch (error) {
+            console.error("Error during Google sign-in", error);
+        }
+        const u = auth.currentUser;
+        const ok = u?.emailVerified && u?.email?.toLowerCase().endsWith('@bitsathy.ac.in');
+        if (!ok && u) {
+            try { await u.delete(); } catch (e) {}
+            try { await signOut(auth); } catch (e) {}
+            alert('Please sign in with your @bitsathy.ac.in email');
+        }
     };
 
     const handleSignOut = async () => {
