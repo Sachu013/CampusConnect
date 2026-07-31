@@ -1,12 +1,37 @@
-# React + Vite
+# CampusConnect
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A centralized student engagement platform that brings together campus communication, achievement sharing, and event management into a single web application.
 
-Currently, two official plugins are available:
+## Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+CampusConnect was developed to simplify student communication by providing a single platform where students can showcase achievements, stay updated with campus notices and events, and interact with their peers.
 
-## Expanding the ESLint configuration
+Instead of relying on multiple platforms, CampusConnect provides an organized and convenient solution for everyday campus activities.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Features
+
+- Student achievement sharing
+- Campus notices
+- Event announcements
+- Student communication
+- User authentication
+- Responsive user interface
+
+## Tech Stack
+
+- React
+- Firebase
+
+## Live Demo
+
+https://campusconnect-aad93.web.app/
+
+## GitHub Repository
+
+https://github.com/Sachu013/CampusConnect
+
+## Author
+
+**Sachu**
+
+GitHub: https://github.com/Sachu013
